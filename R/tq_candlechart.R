@@ -11,7 +11,7 @@
 #' @example
 # tq_candlechart('VND','2018-01-01','2018-05-01',colour = c('red','darkred'),show.volume = FALSE)
 
-globalVariables(c(".","%<>%","c"))
+globalVariables(c(".","%<>%","c",".I",".N"))
 
 tq_candlechart <- function(symbol, from, to, 
                            colour=c('#17BECF','#7F7F7F'), 
