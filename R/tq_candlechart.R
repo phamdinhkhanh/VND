@@ -17,7 +17,10 @@ tq_candlechart <- function(symbol, from, to, colour, show.volume = TRUE,...){
     df <- symbol
     title <- base::substitute(symbol)
   } else {
-    df <- VNDS::tq_get(symbol,from,to)
+    if(!exists("tq_get", mode = "function")) {
+      source("R/tq_get.R")
+    }
+    df <- tq_get(symbol,from,to)
   }
   # create Bollinger Bands
   bbands <- TTR::BBands(df[,c("high","low","close")])
