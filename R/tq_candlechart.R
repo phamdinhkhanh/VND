@@ -11,17 +11,22 @@
 #' @example
 # tq_candlechart('VND','2018-01-01','2018-05-01',colour = c('red','darkred'),show.volume = FALSE)
 
-tq_candlechart <- function(symbol, from, to, colour, show.volume = TRUE,...){
+globalVariables(c(".","%<>%","c"))
+
+tq_candlechart <- function(symbol, from, to, 
+                           colour=c('#17BECF','#7F7F7F'), 
+                           show.volume = TRUE,...){
   # create dataframe
   if(quantmod::is.OHLC(symbol)){
+    print(1)
     df <- symbol
     title <- base::substitute(symbol)
   } else {
-    if(!exists("tq_get", mode = "function")) {
-      source("R/tq_get.R")
-    }
+    source("R/tq_get.R")
     df <- tq_get(symbol,from,to)
+    title <- symbol
   }
+  
   # create Bollinger Bands
   bbands <- TTR::BBands(df[,c("high","low","close")])
 

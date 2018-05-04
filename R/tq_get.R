@@ -11,7 +11,7 @@
 #' @export
 #' @example
 #' VND <- tq_get("VND","2017-01-01","2018-01-01", src="CP68", minimal = FALSE)
-
+if(getRversion() >= "2.15.1")  utils::globalVariables(c("."))
 
 # PRIMARY FUNCTION
 tq_get <- function(symbol,from,to,src="VND", minimal = TRUE,...){
@@ -23,27 +23,27 @@ tq_get <- function(symbol,from,to,src="VND", minimal = TRUE,...){
                 "close",
                 "volume",
                 "adjusted")
-
+    
     if(src=="VND"){
       extractData <- tq_get_vnd(symbol,from,to)
-
+      
       extractData <- extractData %>%
         mutate(volume = match.volume + reconcile.volume)
-
+      
       extractData <- extractData[,colname]
-
+      
       invisible(extractData)
     } else if(src=="CP68"){
       extractData <- tq_get_cp68(symbol,from,to)
-
+      
       extractData <- extractData %>%
         mutate(volume = match.volume + reconcile.volume)
-
+      
       extractData <- extractData %>%
         mutate(adjusted = (high + low)/2)
-
+      
       extractData <- extractData[,colname]
-
+      
       invisible(extractData)
     }
   } else {
@@ -58,7 +58,6 @@ tq_get <- function(symbol,from,to,src="VND", minimal = TRUE,...){
 
 ################################## get data VNDirect ###############################################
 tq_get_vnd <- function(symbol, from, to,...){
-  globalVariables(".")
   url <- "https://www.vndirect.com.vn/portal/thong-ke-thi-truong-chung-khoan/lich-su-gia.shtml"
   #lay page cuoi cung
   lastPage <- getLastPage(url,symbol,from,to)
@@ -74,42 +73,42 @@ tq_get_vnd <- function(symbol, from, to,...){
              "adjusted",
              "match.volume",
              "reconcile.volume")
-
+  
   symbolData <- matrix(nrow = 0,
                        ncol = 11,
                        byrow = TRUE,
                        dimnames = list(c(),cname))
-
-
-
-
+  
+  
+  
+  
   for (page in 1:lastPage) {
     #Tao form-data request
     #load ham tu utils.R
     if(!exists("dateChar", mode = "function")) {
       source("R/utils.R")
     }
-
+    
     fd <- list(
       searchMarketStatisticsView.symbol= symbol,
       strFromDate = dateChar(from),
       strToDate = dateChar(to),
       pagingInfo.indexPage = page
     )
-
+    
     #Tao request post
     resp <- POST(url,
                  body = fd,
                  encode = "form")
-
+    
     #doc html_node
     tmp <- resp %>% read_html() %>%
       html_nodes(xpath='//*[@id="tab-1"]/div[2]/ul') %>%
       html_children() %>%
       html_text()
-
+    
     noDays <- length(tmp)
-
+    
     for(i in 2:noDays){
       row <- str_replace_all(tmp[i],"\t","") %>%
         str_replace_all("\n"," ") %>%
@@ -123,21 +122,21 @@ tq_get_vnd <- function(symbol, from, to,...){
       symbolData <- rbind(symbolData,row)
     }
   }
-
+  
   symbolData <- data.frame(symbolData,
                            row.names = symbolData[,1])
-
+  
   symbolData[,1]<- as.Date(symbolData[,1],"%Y-%m-%d")
-
+  
   symbolData[,2:11] <- suppressWarnings(apply(symbolData[,2:11],2,as.numeric))
-
+  
   symbolData[is.na(symbolData)] <- 0
   #myexport(symbolData)
   #doi ten cho bang
   #assign(symbol,symbolData,envir = .GlobalEnv)
   #rm(list = "symbolData",envir = .GlobalEnv)
   cat(paste0("#",symbol," from ",from, " to ",to," already cloned "))
-
+  
   invisible(symbolData)
 }
 
@@ -148,18 +147,18 @@ getLastPage <- function (url,symbol,from,to){
     strFromDate = dateChar(from),
     strToDate = dateChar(to)
   )
-
+  
   resp <- POST(url,
                body = fd,
                encode = "form")
-
+  
   #Lay trang cuoi
   resp %>% read_html() %>%
     html_nodes(xpath='//*[@id="tab-1"]/div[1]') %>%
     html_text(.,trim=TRUE) %>%
     str_split("[^0-9]+") %>%
     unlist() -> df
-
+  
   lastPage <- ifelse(is.na(df[3]),
                      1,
                      as.numeric(df[3]))
@@ -190,25 +189,24 @@ dateChar <- function(dateTime){
 ################################## get data CP68 ###############################################
 
 tq_get_cp68 <- function (symbol,from,to,...){
-  globalVariables(".")
   url<-"http://www.cophieu68.vn/historyprice.php"
-
+  
   #lay cac trang cuoi cung
   resp <- POST(url,
                body=list(id=symbol),
                endcode="form")
-
+  
   resp %>% read_html() %>%
     html_nodes(xpath='//*[@id="navigator"]/li[7]/a') %>%
     html_attrs() -> tmp
-
+  
   startString <- as.numeric(str_locate(tmp[1],"[0-9]")[1])
   endString <- as.numeric(str_locate(tmp[1],"[0-9]")[2])
-
+  
   lastPage <- as.numeric(str_sub(unlist(tmp[1]),
                                  startString,
                                  endString))
-
+  
   #khoi tao matrix
   cname <- c(
     "date",
@@ -225,62 +223,62 @@ tq_get_cp68 <- function (symbol,from,to,...){
     "foreign.sale",
     "value"
   )
-
+  
   symbolData <- matrix(nrow = 0,
                        ncol = 13,
                        byrow = TRUE,
                        dimnames = list(c(),cname))
-
+  
   #tao vong lap lay du lieu
   for(i in 1:lastPage){
-
+    
     resp <- POST(url,
                  body=list(currentPage = i, id = symbol),
                  endcode="form")
-
-
+    
+    
     resp %>% read_html() %>%
       html_nodes(xpath='//*[@id="content"]/table') %>%
       html_table() %>%
       as.data.frame() -> tmp
-
+    
     tmp <- tmp[-1,2:14]
-
+    
     #load ham tu utils.R
     if(!exists("convertDate", mode = "function")) {
       source("R/utils.R")
     }
-
+    
     tmp[,1] <- as.Date(convertDate(tmp[,1]),
                        format = "%Y-%m-%d")
-
+    
     #check dieu kien de continue
     if(min(tmp[,1]) > to){next}
-
+    
     #check dieu kien de break
     if(max(tmp[,1]) < from){break}
-
+    
     #load ham tu utils.R
     if(!exists("subComma", mode = "function")) {
       source("R/utils.R")
     }
-
+    
     tmp[,c(6,10:12)] <- apply(tmp[,c(6,10:12)],2,
                               subComma)
-
+    
     #load ham tu utils.R
     if(!exists("convertPercent", mode = "function")) {
       source("R/utils.R")
     }
-
+    
     tmp[,4] <- convertPercent(tmp[,4])
     tmp[,c(2:3,5:13)] <- suppressWarnings(apply(tmp[,c(2:3,5:13)],
                                                 2,as.numeric))
-
+    
     colnames(tmp)<-cname
     symbolData <- rbind(symbolData,tmp)
   }
-
+  
   symbolData <- symbolData[,c(1,3:4,7:9,5,2,6,10:13)]
   #symbolData <- data.frame(symbolData, row.names = symbolData[,1])
   #symbolData <- filter(symbolData,and(date >= from, date <= to))
@@ -289,5 +287,3 @@ tq_get_cp68 <- function (symbol,from,to,...){
 }
 
 ################################## get data cafeF ###############################################
-
-
